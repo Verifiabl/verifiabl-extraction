@@ -1,0 +1,96 @@
+name: Release
+
+# Builds the module, its provenance and its notices from the release tag, and
+# attaches them to the GitHub release when it is published.
+#
+# build holds no release credentials. It restores no Nix store, so this run
+# builds every file that publish attests, and it fails unless they are the
+# committed dist/.
+#
+# publish runs behind the extraction-release GitHub environment (repo Settings
+# → Environments), which requires a reviewer approval and allows only v* tags,
+# so publishing a release alone cannot attach or attest assets.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # An empty Nix store compiles PDFium, which takes over an hour here.
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+      # The validator and target policy are shipped with this repository.
+      - name: Resolve and validate the release target
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: node .github/scripts/release-tool.mjs validate-checkout "$TAG"
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - name: Build the module, its provenance and its notices from source
+        run: node .github/scripts/release-tool.mjs pack "$RELEASE_TARGET_ID" "$VERSION"
+      # The SDKs embed dist/, so a release must be the same files.
+      - name: Check the build is the committed dist/
+        run: diff --recursive --brief result/ dist/
+      - name: List the SHA-256 of each asset
+        working-directory: artifacts
+        run: sha256sum verifiabl-extract.wasm verifiabl-extract.json THIRD-PARTY-NOTICES.txt > SHA256SUMS
+      - name: Hand the assets to the publish job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-assets
+          path: artifacts
+          if-no-files-found: error
+          # As long as the deployment review can wait.
+          retention-days: 30
+
+  # Holds the release credentials, so it runs nothing from the checkout.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: extraction-release
+    permissions:
+      contents: write # upload the release assets
+      id-token: write # OIDC token for Sigstore build provenance
+      attestations: write # Sigstore build-provenance attestation
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-assets
+          path: artifacts
+      # Attest before upload so a failed attestation publishes nothing.
+      - name: Attest build provenance for the assets
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: artifacts/*
+      # A rerun accepts an asset that is already attached only if it is the
+      # same file, so a release never holds two different modules.
+      - name: Attach the assets to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          attached="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          for file in artifacts/*; do
+            name="$(basename "$file")"
+            if grep -qxF "$name" <<<"$attached"; then
+              gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$name" --output "attached-$name"
+              cmp "$file" "attached-$name"
+            else
+              gh release upload "$TAG" "$file" --repo "$GITHUB_REPOSITORY"
+            fi
+          done

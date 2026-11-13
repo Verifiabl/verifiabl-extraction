@@ -1,0 +1,59 @@
+// WASI stub: <condition_variable>
+// WASI (wasip1) is single-threaded.  Provide a minimal no-op implementation.
+#ifndef _WASI_STUB_CONDITION_VARIABLE_
+#define _WASI_STUB_CONDITION_VARIABLE_
+// Also define libc++'s include guard so the real (empty) header is skipped.
+#define _LIBCPP_CONDITION_VARIABLE
+
+#include <mutex>
+
+// NOTE: Do not #include <chrono> here — it can transitively pull in
+// the real <condition_variable> or <mutex> and conflict with our stubs.
+// Instead, the wait_for/wait_until templates accept any type and just
+// return immediately (single-threaded, nothing to wait for).
+
+namespace std {
+
+enum class cv_status { no_timeout, timeout };
+
+class condition_variable {
+public:
+    condition_variable() = default;
+    ~condition_variable() = default;
+    condition_variable(const condition_variable&) = delete;
+    condition_variable& operator=(const condition_variable&) = delete;
+
+    void notify_one() noexcept {}
+    void notify_all() noexcept {}
+
+    void wait(unique_lock<mutex>&) {}
+
+    template <class Predicate>
+    void wait(unique_lock<mutex>&, Predicate pred) {
+        while (!pred()) {}
+    }
+
+    template <class _Duration>
+    cv_status wait_for(unique_lock<mutex>&, const _Duration&) {
+        return cv_status::timeout;
+    }
+
+    template <class _Duration, class Predicate>
+    bool wait_for(unique_lock<mutex>&, const _Duration&, Predicate pred) {
+        return pred();
+    }
+
+    template <class _TimePoint>
+    cv_status wait_until(unique_lock<mutex>&, const _TimePoint&) {
+        return cv_status::timeout;
+    }
+
+    template <class _TimePoint, class Predicate>
+    bool wait_until(unique_lock<mutex>&, const _TimePoint&, Predicate pred) {
+        return pred();
+    }
+};
+
+}  // namespace std
+
+#endif  // _WASI_STUB_CONDITION_VARIABLE_

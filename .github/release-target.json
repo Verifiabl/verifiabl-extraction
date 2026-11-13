@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "versionPolicy": {
+    "name": "SemVer 2.0 without build metadata",
+    "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:(?:0|[1-9][0-9]*)|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:(?:0|[1-9][0-9]*)|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$"
+  },
+  "targets": [
+    {
+      "id": "extraction/module",
+      "ecosystem": "extraction",
+      "role": "module",
+      "publicRepository": "Verifiabl/verifiabl-extraction",
+      "changelog": "CHANGELOG.md",
+      "tags": {
+        "privatePrefix": "extraction/module/v",
+        "publicPrefix": "v"
+      },
+      "packages": [
+        {
+          "id": "verifiabl-extract",
+          "versionSource": {
+            "kind": "json",
+            "path": "version.json",
+            "versionProperty": "version",
+            "packageIdProperty": "name"
+          }
+        }
+      ],
+      "coupledVersionGroups": [],
+      "packCommands": [
+        {
+          "run": [
+            "nix",
+            "build",
+            ".#dist",
+            "--print-build-logs"
+          ]
+        },
+        {
+          "run": [
+            "mkdir",
+            "-p",
+            "artifacts"
+          ]
+        },
+        {
+          "run": [
+            "install",
+            "-m644",
+            "result/verifiabl-extract.wasm",
+            "result/verifiabl-extract.json",
+            "result/THIRD-PARTY-NOTICES.txt",
+            "artifacts/"
+          ]
+        }
+      ]
+    }
+  ]
+}

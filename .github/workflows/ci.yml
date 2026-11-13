@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # A cold Nix store compiles PDFium, which takes over an hour here; the
+    # cache below holds it after main's first run.
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      # Only main saves, so a pull request cannot write the store main reads.
+      - uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7.0.2
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.nix', 'flake.lock', 'nix/**') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          paths: ~/.cache/nix
+          save: ${{ github.ref == 'refs/heads/main' }}
+
+      # Rebuilds the module, its notices and the stand-ins, and compares them with the committed files.
+      - name: Check dist and the stand-ins match their source
+        run: nix flake check
+
+      - name: Check the module crate's formatting and lints
+        working-directory: crates/verifiabl-extract
+        run: nix develop ../.. --command bash -c 'cargo fmt --check && cargo clippy --release --locked -- -D warnings'
+      # The crate builds as WebAssembly by default; its tests run on the runner's platform.
+      - name: Run the module crate's unit tests
+        working-directory: crates/verifiabl-extract
+        run: nix develop ../.. --command cargo test --locked --target x86_64-unknown-linux-gnu
+
+      - name: Check the host crate's formatting and lints
+        working-directory: crates/host
+        run: nix develop ../.. --command bash -c 'cargo fmt --check && cargo clippy --release --locked --all-targets -- -D warnings'
+      - name: Run the host's conformance checks
+        working-directory: crates/host
+        run: nix develop ../.. --command cargo test --release --locked
+
+      - name: Check the notices crate's formatting, lints and tests
+        working-directory: crates/notices
+        run: nix develop ../.. --command bash -c 'cargo fmt --check && cargo clippy --locked --all-targets -- -D warnings && cargo test --locked'
+
+      - name: Check the fuzz crate's formatting and lints
+        working-directory: fuzz
+        run: nix develop .. --command bash -c 'cargo fmt --check && cargo clippy --locked --all-targets --all-features -- -D warnings'
+      - name: Run the fixtures and regression inputs through the fuzz targets
+        working-directory: fuzz
+        run: nix develop .. --command cargo test --release --locked
+
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      # cargo-audit from the flake's own nixpkgs, without the dev shell's PDFium build.
+      - name: Audit every Cargo lockfile
+        run: |
+          set -euo pipefail
+          for crate in crates/verifiabl-extract crates/host crates/notices fuzz; do
+            nix shell --inputs-from . nixpkgs#cargo-audit --command \
+              cargo-audit audit --file "$crate/Cargo.lock" --deny unsound --no-yanked
+          done

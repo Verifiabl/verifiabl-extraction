@@ -1,0 +1,18 @@
+;; A read that never returns. The host must stop it at the time budget.
+(module
+  (memory (export "memory") 1 8192)
+  (func (export "vf_abi_version") (result i32) (i32.const 3))
+  (func (export "vf_alloc") (param i32) (result i32) (i32.const 1024))
+  (func $read (param i32 i32 i32) (result i32)
+    (loop $forever (br $forever))
+    (unreachable)
+  )
+  (export "vf_read_image" (func $read))
+  (export "vf_read_pdf" (func $read))
+  (func (export "vf_read_pixels") (param i32 i32 i32 i32 i32 i32) (result i32)
+    (call $read (local.get 0) (local.get 1) (local.get 5))
+  )
+  (func (export "vf_out_of_memory") (result i32) (i32.const 0))
+  (func (export "vf_result_ptr") (result i32) (i32.const 0))
+  (func (export "vf_result_len") (result i32) (i32.const 0))
+)

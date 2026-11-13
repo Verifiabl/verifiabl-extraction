@@ -1,0 +1,59 @@
+[package]
+name = "verifiabl-extract-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+libfuzzer-sys = { version = "0.4", optional = true }
+miniz_oxide = "0.8"
+serde_json = "1"
+verifiabl-extract = { path = "../crates/verifiabl-extract" }
+
+[features]
+# The fuzz targets. Without it, the crate's tests run the checks over the kept
+# inputs with no libFuzzer build and no coverage instrumentation.
+libfuzzer = ["dep:libfuzzer-sys"]
+
+[[bin]]
+name = "metadata"
+path = "fuzz_targets/metadata.rs"
+test = false
+doc = false
+bench = false
+required-features = ["libfuzzer"]
+
+[[bin]]
+name = "metadata_shape"
+path = "fuzz_targets/metadata_shape.rs"
+test = false
+doc = false
+bench = false
+required-features = ["libfuzzer"]
+
+[[bin]]
+name = "image"
+path = "fuzz_targets/image.rs"
+test = false
+doc = false
+bench = false
+required-features = ["libfuzzer"]
+
+[[bin]]
+name = "result"
+path = "fuzz_targets/result.rs"
+test = false
+doc = false
+bench = false
+required-features = ["libfuzzer"]
+
+[profile.dev]
+# The tests hold each kept input to the time limit that fuzzing gives it,
+# which an unoptimised build exceeds.
+opt-level = 3
+
+[profile.release]
+# Line numbers in a crash report, and the checks the module itself is built with.
+debug = 1
+overflow-checks = true
+debug-assertions = true

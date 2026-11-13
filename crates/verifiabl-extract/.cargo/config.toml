@@ -1,0 +1,14 @@
+# The default target too, so editors check the crate as it is built.
+[build]
+target = "wasm32-unknown-unknown"
+
+[target.wasm32-unknown-unknown]
+rustflags = [
+  "-C", "target-feature=+simd128",
+  # Every host enforces this cap, including those without a store limiter: 512 MiB.
+  "-C", "link-arg=--max-memory=536870912",
+]
+
+# Where nix/module.nix puts the wasi-sdk builds of ZXing-C++ and the shim.
+[env]
+VF_NATIVE_DIR = { value = "target/native", relative = true }

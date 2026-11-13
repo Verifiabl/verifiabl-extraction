@@ -1,0 +1,27 @@
+[package]
+name = "verifiabl-extract-host"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "A reference host for the Verifiabl extraction module, with its conformance checks and the module replay"
+
+[dependencies]
+# For generate-fixtures: zlib streams, as PDFs' FlateDecode holds them.
+miniz_oxide = "0.8"
+# For generate-fixtures: the pixel fixtures draw the code in qr.png.
+png = "0.18"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+# The long-term-support release the .NET host ships.
+wasmtime = "48"
+# For size-report, which reads the module's sections and name section.
+wasmparser = "0.263"
+
+[profile.release]
+# Arithmetic that overflows on a hostile module's output panics instead of wrapping.
+overflow-checks = true
+
+# Compiling the module with an unoptimised Cranelift takes minutes.
+[profile.dev.package."*"]
+opt-level = 3

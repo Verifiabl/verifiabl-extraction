@@ -1,0 +1,17 @@
+;; vf_alloc returns an address beyond the memory. The host must not write there.
+(module
+  (memory (export "memory") 1 8192)
+  (func (export "vf_abi_version") (result i32) (i32.const 3))
+  (func (export "vf_alloc") (param i32) (result i32) (i32.const 0xFFFF0000))
+  (func $read (param i32 i32 i32) (result i32)
+    (i32.const 0)
+  )
+  (export "vf_read_image" (func $read))
+  (export "vf_read_pdf" (func $read))
+  (func (export "vf_read_pixels") (param i32 i32 i32 i32 i32 i32) (result i32)
+    (call $read (local.get 0) (local.get 1) (local.get 5))
+  )
+  (func (export "vf_out_of_memory") (result i32) (i32.const 0))
+  (func (export "vf_result_ptr") (result i32) (i32.const 0))
+  (func (export "vf_result_len") (result i32) (i32.const 0))
+)

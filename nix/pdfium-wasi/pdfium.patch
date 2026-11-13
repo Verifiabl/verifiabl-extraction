@@ -1,0 +1,158 @@
+diff --git a/core/fxcrt/BUILD.gn b/core/fxcrt/BUILD.gn
+index 796a10a..abcbc2d 100644
+--- a/core/fxcrt/BUILD.gn
++++ b/core/fxcrt/BUILD.gn
+@@ -159,7 +159,7 @@ source_set("fxcrt") {
+   } else {
+     sources += [ "fx_memory_malloc.cpp" ]
+   }
+-  if (is_posix) {
++  if (is_posix || current_os == "wasi") {
+     sources += [
+       "cfx_fileaccess_posix.cpp",
+       "cfx_fileaccess_posix.h",
+diff --git a/core/fxge/BUILD.gn b/core/fxge/BUILD.gn
+index 933f538..3df15ad 100644
+--- a/core/fxge/BUILD.gn
++++ b/core/fxge/BUILD.gn
+@@ -166,7 +166,7 @@ source_set("fxge") {
+     ]
+   }
+
+-  if (is_linux || is_chromeos) {
++  if (is_linux || is_chromeos || current_os == "wasi") {
+     sources += [ "linux/fx_linux_impl.cpp" ]
+   }
+
+diff --git a/skia/BUILD.gn b/skia/BUILD.gn
+index 67e1360..3340926 100644
+--- a/skia/BUILD.gn
++++ b/skia/BUILD.gn
+@@ -513,7 +513,7 @@ skia_source_set("skia_opts") {
+   } else if (current_cpu == "mipsel" || current_cpu == "mips64el") {
+     cflags += [ "-fomit-frame-pointer" ]
+   } else {
+-    assert(false, "Unsupported target CPU " + current_cpu)
++    # assert(false, "Unsupported target CPU " + current_cpu)
+   }
+
+   if (is_android && !is_debug) {
+diff --git a/third_party/icu/source/common/umutex.cpp b/third_party/icu/source/common/umutex.cpp
+index 0c05396..28b5907 100644
+--- a/third_party/icu/source/common/umutex.cpp
++++ b/third_party/icu/source/common/umutex.cpp
+@@ -29,6 +29,55 @@
+
+ U_NAMESPACE_BEGIN
+
++#if defined(__wasi__)
++// WASI is single-threaded.  Provide trivial implementations of all
++// mutex / init-once helpers so that ICU links without std::mutex.
++
++UMutex *UMutex::gListHead = nullptr;
++
++void UMutex::cleanup() {
++    gListHead = nullptr;
++}
++
++U_CAPI void U_EXPORT2
++umtx_lock(UMutex *) {}
++
++U_CAPI void U_EXPORT2
++umtx_unlock(UMutex *) {}
++
++U_COMMON_API UBool U_EXPORT2
++umtx_initImplPreInit(UInitOnce &uio) {
++    if (umtx_loadAcquire(uio.fState) == 0) {
++        umtx_storeRelease(uio.fState, 1);
++        return true;
++    }
++    return false;
++}
++
++U_COMMON_API void U_EXPORT2
++umtx_initImplPostInit(UInitOnce &uio) {
++    umtx_storeRelease(uio.fState, 2);
++}
++
++U_NAMESPACE_END
++
++U_DEPRECATED void U_EXPORT2
++u_setMutexFunctions(const void *, UMtxInitFn *, UMtxFn *,
++                    UMtxFn *,  UMtxFn *, UErrorCode *status) {
++    if (U_SUCCESS(*status)) {
++        *status = U_UNSUPPORTED_ERROR;
++    }
++}
++
++U_DEPRECATED void U_EXPORT2
++u_setAtomicIncDecFunctions(const void *, UMtxAtomicFn *, UMtxAtomicFn *,
++                           UErrorCode *status) {
++    if (U_SUCCESS(*status)) {
++        *status = U_UNSUPPORTED_ERROR;
++    }
++}
++
++#else  // !defined(__wasi__)
+
+ #if defined(U_USER_MUTEX_CPP)
+ // Support for including an alternate implementation of mutexes has been withdrawn.
+@@ -200,3 +249,5 @@ u_setAtomicIncDecFunctions(const void * /*context */, UMtxAtomicFn *, UMtxAtomic
+         *status = U_UNSUPPORTED_ERROR;
+     }
+ }
++
++#endif  // defined(__wasi__)
+diff --git a/third_party/icu/source/common/umutex.h b/third_party/icu/source/common/umutex.h
+index 8ae6d10..268c21e 100644
+--- a/third_party/icu/source/common/umutex.h
++++ b/third_party/icu/source/common/umutex.h
+@@ -21,8 +21,12 @@
+ #define UMUTEX_H
+
+ #include <atomic>
++#if !defined(__wasi__)
+ #include <condition_variable>
+ #include <mutex>
++#else
++#include <cstddef>
++#endif
+ #include <type_traits>
+
+ #include "unicode/utypes.h"
+@@ -202,6 +206,27 @@ template<class T> void umtx_initOnce(UInitOnce &uio, void (U_CALLCONV *fp)(T, UE
+  *    }         // myMutex is released when lock goes out of scope.
+  */
+
++#if defined(__wasi__)
++// WASI (wasip1) is single-threaded; UMutex is a no-op.
++class U_COMMON_API_CLASS UMutex {
++public:
++    U_COMMON_API UMUTEX_CONSTEXPR UMutex() {}
++    U_COMMON_API ~UMutex() = default;
++
++    UMutex(const UMutex& other) = delete;
++    UMutex& operator=(const UMutex& other) = delete;
++    void* operator new(size_t) = delete;
++
++    U_COMMON_API void lock() {}
++    U_COMMON_API void unlock() {}
++
++    U_COMMON_API static void cleanup();
++
++private:
++    UMutex *fListLink { nullptr };
++    static UMutex *gListHead;
++};
++#else
+ class U_COMMON_API_CLASS UMutex {
+ public:
+     U_COMMON_API UMUTEX_CONSTEXPR UMutex() {}
+@@ -237,6 +262,7 @@ private:
+      */
+     std::mutex *getMutex();
+ };
++#endif  // defined(__wasi__)
+
+
+ /* Lock a mutex.

@@ -1,0 +1,66 @@
+{
+  "toolchain": {
+    "wasiSdk": "34.0",
+    "wasiLibc": "2e6fb9d8ee0c",
+    "llvm": "895aa2c896ad",
+    "rustc": "1.99.0"
+  },
+  "components": [
+    {
+      "name": "wasi-libc",
+      "version": "wasi-sdk 34.0, commit 2e6fb9d8ee0c",
+      "license": "Apache-2.0 WITH LLVM-exception AND Apache-2.0 AND MIT, with parts under BSD-2-Clause, BSD-3-Clause and MIT",
+      "source": "https://github.com/WebAssembly/wasi-libc",
+      "files": [
+        "wasi-libc/LICENSE",
+        "wasi-libc/LICENSE-APACHE-LLVM",
+        "wasi-libc/LICENSE-APACHE",
+        "wasi-libc/LICENSE-MIT",
+        "wasi-libc/cloudlibc-LICENSE",
+        "wasi-libc/musl-COPYRIGHT",
+        "wasi-libc/musl-fts-COPYING"
+      ]
+    },
+    {
+      "name": "LLVM runtimes: libc++, libc++abi, libunwind and compiler-rt",
+      "version": "wasi-sdk 34.0, LLVM 23.1.0, commit 895aa2c896ad",
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "source": "https://github.com/llvm/llvm-project",
+      "files": [
+        "llvm/libcxx-LICENSE.TXT",
+        "llvm/libcxxabi-LICENSE.TXT",
+        "llvm/libunwind-LICENSE.TXT",
+        "llvm/compiler-rt-LICENSE.TXT"
+      ]
+    },
+    {
+      "name": "Rust standard library",
+      "version": "1.99.0",
+      "license": "MIT OR Apache-2.0",
+      "source": "https://github.com/rust-lang/rust",
+      "files": [
+        "rust/COPYRIGHT",
+        "rust/LICENSE-MIT",
+        "rust/LICENSE-APACHE"
+      ]
+    },
+    {
+      "name": "libzueci, in ZXing-C++",
+      "version": "as bundled",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/zxing-cpp/zxing-cpp, in core/src/libzueci",
+      "files": [
+        "zxing-cpp/libzueci-LICENSE"
+      ]
+    },
+    {
+      "name": "Flexible and Economical UTF-8 Decoder, in libzueci",
+      "version": "as bundled",
+      "license": "MIT",
+      "source": "https://bjoern.hoehrmann.de/utf-8/decoder/dfa/",
+      "files": [
+        "zxing-cpp/utf8-decoder-LICENSE"
+      ]
+    }
+  ]
+}
