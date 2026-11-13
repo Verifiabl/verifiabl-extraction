@@ -1,0 +1,16 @@
+# Only the built module, its provenance and its notices belong in dist/.
+# `nix run .#update-dist` writes them.
+/dist/*
+!/dist/verifiabl-extract.wasm
+!/dist/verifiabl-extract.json
+!/dist/THIRD-PARTY-NOTICES.txt
+
+target/
+node_modules/
+.direnv/
+result
+result-*
+.DS_Store
+
+# The release tool packs the release assets here.
+/artifacts/

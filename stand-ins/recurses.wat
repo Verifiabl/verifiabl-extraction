@@ -1,0 +1,20 @@
+;; A read that recurses without bound, as a decoder with a runaway recursion would.
+;; The host must report it, not overflow its own stack.
+(module
+  (memory (export "memory") 1 8192)
+  (func (export "vf_abi_version") (result i32) (i32.const 3))
+  (func (export "vf_alloc") (param i32) (result i32) (i32.const 1024))
+  (func $recurse (param i32) (result i32)
+    (i32.add (call $recurse (i32.add (local.get 0) (i32.const 1))) (i32.const 1)))
+  (func $read (param i32 i32 i32) (result i32)
+    (call $recurse (i32.const 0))
+  )
+  (export "vf_read_image" (func $read))
+  (export "vf_read_pdf" (func $read))
+  (func (export "vf_read_pixels") (param i32 i32 i32 i32 i32 i32) (result i32)
+    (call $read (local.get 0) (local.get 1) (local.get 5))
+  )
+  (func (export "vf_out_of_memory") (result i32) (i32.const 0))
+  (func (export "vf_result_ptr") (result i32) (i32.const 0))
+  (func (export "vf_result_len") (result i32) (i32.const 0))
+)

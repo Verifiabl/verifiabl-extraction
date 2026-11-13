@@ -1,0 +1,20 @@
+;; Reports success with a result of 50,000 nested empty arrays: valid JSON
+;; within the size limit that a host cannot parse or pass on without care.
+(module
+  (memory (export "memory") 2 8192)
+  (func (export "vf_abi_version") (result i32) (i32.const 3))
+  (func (export "vf_alloc") (param i32) (result i32) (i32.const 120000))
+  (func $read (param i32 i32 i32) (result i32)
+    (memory.fill (i32.const 0) (i32.const 91) (i32.const 50000))
+    (memory.fill (i32.const 50000) (i32.const 93) (i32.const 50000))
+    (i32.const 0)
+  )
+  (export "vf_read_image" (func $read))
+  (export "vf_read_pdf" (func $read))
+  (func (export "vf_read_pixels") (param i32 i32 i32 i32 i32 i32) (result i32)
+    (call $read (local.get 0) (local.get 1) (local.get 5))
+  )
+  (func (export "vf_out_of_memory") (result i32) (i32.const 0))
+  (func (export "vf_result_ptr") (result i32) (i32.const 0))
+  (func (export "vf_result_len") (result i32) (i32.const 100000))
+)

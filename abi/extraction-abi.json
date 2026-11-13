@@ -1,0 +1,98 @@
+{
+  "abiVersion": 3,
+  "module": "dist/verifiabl-extract.wasm",
+  "memory": {
+    "export": "memory",
+    "maxBytes": 536870912
+  },
+  "limits": {
+    "maxFileBytes": 20971520,
+    "maxPixelBytes": 200000000,
+    "maxPixels": 50000000,
+    "maxPdfPages": 50,
+    "pdfRenderDpi": 200,
+    "maxPdfRenderedPixels": 200000000,
+    "maxResultBytes": 1048576,
+    "maxPayloadLength": 13000
+  },
+  "pixelFormats": {
+    "gray8": 0,
+    "rgba32": 1,
+    "bgra32": 2
+  },
+  "exports": {
+    "vf_abi_version": {
+      "params": [],
+      "result": "i32"
+    },
+    "vf_alloc": {
+      "params": [
+        "length"
+      ],
+      "result": "pointer"
+    },
+    "vf_read_image": {
+      "params": [
+        "file",
+        "length",
+        "maxPixels"
+      ],
+      "result": "status",
+      "output": "vf_result_ptr and vf_result_len hold {\"codes\":[string,...]} in UTF-8, of at most maxResultBytes"
+    },
+    "vf_read_pdf": {
+      "params": [
+        "file",
+        "length",
+        "maxPixels"
+      ],
+      "result": "status",
+      "output": "vf_result_ptr and vf_result_len hold {\"metadata\":[string,...],\"codes\":[string,...],\"pages\":n}; metadata holds only values of at most maxPayloadLength UTF-16 code units, and pages are rendered only when it is empty"
+    },
+    "vf_read_pixels": {
+      "params": [
+        "pixels",
+        "length",
+        "width",
+        "height",
+        "format",
+        "maxPixels"
+      ],
+      "result": "status",
+      "output": "vf_result_ptr and vf_result_len hold {\"codes\":[string,...]} in UTF-8, of at most maxResultBytes"
+    },
+    "vf_result_ptr": {
+      "params": [],
+      "result": "pointer"
+    },
+    "vf_result_len": {
+      "params": [],
+      "result": "i32"
+    },
+    "vf_out_of_memory": {
+      "params": [],
+      "result": "i32",
+      "output": "1 if a trap followed a failed allocation"
+    }
+  },
+  "status": {
+    "ok": 0,
+    "partial": 1,
+    "unreadable": 2,
+    "tooManyPixels": 3,
+    "outOfMemory": 4,
+    "tooManyPages": 5,
+    "tooMuchMetadata": 6,
+    "resultTooLarge": 7
+  },
+  "hostStatus": [
+    "timedOut",
+    "fileTooLarge"
+  ],
+  "features": [
+    "exceptions",
+    "simd128",
+    "bulk-memory"
+  ],
+  "imports": []
+}

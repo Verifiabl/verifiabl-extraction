@@ -1,0 +1,26 @@
+[package]
+name = "verifiabl-extract"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+# rlib too, so tests and fuzz targets can use the plain Rust modules on the host.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+png = "0.18"
+zune-jpeg = "0.5"
+zune-core = "0.5"
+image-webp = "0.2"
+miniz_oxide = "0.8"
+roxmltree = "0.21"
+
+[profile.release]
+panic = "abort"
+opt-level = 3
+# Arithmetic that overflows on a hostile file traps instead of wrapping.
+overflow-checks = true
+lto = true
+codegen-units = 1
+strip = true
